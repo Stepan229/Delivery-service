@@ -68,6 +68,7 @@ class UserPackageAssociation(Base):
         ForeignKey("packages.id"),
         nullable=False
     )
+    package: Mapped["Package"] = relationship("Package", back_populates="user_package")
 
 class ShippingCost(Base):
     __tablename__ = "shipping_costs"
