@@ -1,8 +1,10 @@
+from email.mime import base
 from turtle import title
 from unicodedata import numeric
 import uuid
-from enum import Enum
+from enum import Enum, unique
 
+from annotated_types import T
 from sqlalchemy import Boolean
 from sqlalchemy import Column
 from sqlalchemy import String
@@ -15,7 +17,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column, relationship
 
-
+from decimal import Decimal
 
 
 # declarative base class
@@ -29,8 +31,8 @@ class Package(Base):
 
     id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    cost: Mapped[Numeric] = mapped_column(Numeric(10, 2), nullable=False)
-    weight: Mapped[Numeric] = mapped_column(Numeric(10, 3), nullable=False)
+    cost: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    weight: Mapped[Decimal] = mapped_column(Numeric(5, 3), nullable=False)
 
     type_package_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("type_packages.id"), nullable=False
@@ -40,35 +42,35 @@ class Package(Base):
         back_populates="packages",
         lazy="joined"
     )
-    user_package: Mapped["UserPackageAssociation"] = relationship(
-        "UserPackageAssociation",
-        back_populates="package",
-        lazy="select",
-        uselist=False
-    )
-
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("user_session.id"), nullable=False)
+    user: Mapped["UserSession"] = relationship("UserSession", 
+                                               back_populates="packages",
+                                               lazy="joined")
+# Сделать имя уникальным
 class TypePackage(Base):
     __tablename__ = "type_packages"
 
     id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     packages: Mapped[list["Package"]] = relationship(
         "Package",
         back_populates="type_package",
-        lazy="select"
+        lazy="joined",
     )
 
-class UserPackageAssociation(Base):
-    __tablename__ = "user_package_associations"
+class UserSession(Base):
+    __tablename__ = "user_session"
 
     id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
-    package_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("packages.id"),
-        nullable=False
+    id_session: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+
+    packages: Mapped[list["Package"]] = relationship(
+        "Package",
+        back_populates="user",
+        lazy="joined",
     )
-    package: Mapped["Package"] = relationship("Package", back_populates="user_package")
+    
 
 class ShippingCost(Base):
     __tablename__ = "shipping_costs"
@@ -78,4 +80,5 @@ class ShippingCost(Base):
         ForeignKey("packages.id"),
         primary_key=True
     )
-    cost: Mapped[Numeric] = mapped_column(Numeric(12, 2), nullable=False)
+    cost: Mapped[Decimal] = mapped_column(Numeric(4, 2), nullable=True)
+

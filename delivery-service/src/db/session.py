@@ -11,7 +11,7 @@ engine = create_async_engine(
     DATABASE_URL,
     echo=True,
     future=True,
-    execution_options={"isolation_level": "AUTOCOMMIT"},
+    execution_options={"isolation_level": "READ COMMITTED"},
 )
 
 async_session = sessionmaker(
@@ -20,7 +20,7 @@ async_session = sessionmaker(
     class_=AsyncSession,
 )
 
-async def get_session() -> Generator:
+async def get_session_db() -> Generator:
     try:
         session: AsyncSession = async_session()
         yield session
