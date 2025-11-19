@@ -26,3 +26,14 @@ async def get_session_db() -> Generator:
         yield session
     finally:
         await session.close()
+
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def get_db_session():
+    session_gen = get_session_db()
+    try:
+        db_session = await session_gen.__anext__()
+        yield db_session
+    finally:
+        await session_gen.aclose()

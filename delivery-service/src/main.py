@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.routing import APIRouter
 from starlette_exporter import handle_metrics
 from starlette_exporter import PrometheusMiddleware
-
+from scheduler.scheduler import lifespan
 
 from api.handlers import package_router
 
@@ -15,7 +15,8 @@ setup_logging()
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan, title="luchanos-oxford-university")
+
 
 # sentry configuration
 # sentry_sdk.init(
@@ -31,7 +32,6 @@ app = FastAPI()
 #########################
 
 # create instance of the app
-app = FastAPI(title="luchanos-oxford-university")
 app.add_middleware(PrometheusMiddleware)
 app.add_route("/metrics", handle_metrics)
 
@@ -46,3 +46,4 @@ print("App started", str(package_router))
 if __name__ == "__main__":
     # run app on the host and port
     uvicorn.run(app, host="127.0.0.1", port=8000)
+

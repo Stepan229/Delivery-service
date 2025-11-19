@@ -1,7 +1,8 @@
 import logging
 import uuid
 
-from db.dals import PackageDAL, UserSessionDAL, TypePackageDAL, ShippingCostDAL
+
+from db.dals import PackageDAL, UserSessionDAL, TypePackageDAL
 from api.schemas import CreatePackageSchema, CreateTypePackageSchema
 from api.schemas import ShowPackageSchema, ShowTypePackageSchema
 from h11 import Response
@@ -34,15 +35,13 @@ async def _create_new_package(body: CreatePackageSchema,
 
             package = await package_dal.create_package(
                 title=body.title,
-                cost=body.cost,
+                package_cost=body.cost,
                 weight=body.weight,
                 type_package_id=type_package.id,
                 type_package=type_package,
                 user_id=user_session.id,
                 user=user_session
             )
-            shipping_cost_dal = ShippingCostDAL(db_session)
-            await shipping_cost_dal.create_shipping_cost(package)
             # await db_session.refresh(package, ['type_package'])
     except Exception as e:
         logger.error(f"Ошибка при создании посылки: {str(e)}", exc_info=True)
@@ -80,6 +79,14 @@ async def _create_new_type_package(name_type_package: str, db_session: AsyncSess
         )
     return type_package
 
+def create_new_session_user(response: Response) -> uuid.UUID:
+    session_id = uuid.uuid4()
+    response.set_cookie(key="session_id", 
+                        value=str(session_id),
+                        httponly=True,
+                        samesite="lax")
+    return session_id
+
 def get_session_user(request: Request, response: Response) -> tuple[str, bool]:
     "Возвращает идентификатор сессии пользователя и флаг существования сессии"
     session_id = request.headers.get("X-Session-ID")
@@ -88,11 +95,7 @@ def get_session_user(request: Request, response: Response) -> tuple[str, bool]:
         session_id = request.cookies.get("session_id")
 
     if not session_id:
-        session_id = uuid.uuid4()
-        response.set_cookie(key="session_id", 
-                            value=str(session_id),
-                            httponly=True,
-                            samesite="lax")
+        session_id = create_new_session_user(response)
         return str(session_id), False
     return str(session_id), True
 
@@ -107,10 +110,12 @@ async def get_user(request: Request,
         if session_exist:
             user_session = await user_session_dal.get_session_by_session(session_id)
             if not user_session:
-                raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Session {session_id} not found"
-                )
+                user_session = create_new_session_user(response)
+                user_session = await user_session_dal.create_session(session_id)
+                # raise HTTPException(
+                # status_code=status.HTTP_404_NOT_FOUND,
+                # detail=f"Session {session_id} not found"
+                # )
         
         if not session_exist:
             user_session = await user_session_dal.create_session(session_id)
@@ -120,7 +125,6 @@ async def get_packages_by_user_session(db_session: AsyncSession,
                                        user_session: UserSession) -> list[Package]:
     user_session_dal = PackageDAL(db_session)
     packages = await user_session_dal.get_packages_by_user_session(user_session)
-    logger.error(f'ERROOOR {packages}')
     if not packages:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

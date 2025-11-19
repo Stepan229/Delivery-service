@@ -31,8 +31,9 @@ class Package(Base):
 
     id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    cost: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    package_cost: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
     weight: Mapped[Decimal] = mapped_column(Numeric(5, 3), nullable=False)
+    delivery_cost: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=True)
 
     type_package_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("type_packages.id"), nullable=False
@@ -70,15 +71,7 @@ class UserSession(Base):
         back_populates="user",
         lazy="joined",
     )
+
     
-
-class ShippingCost(Base):
-    __tablename__ = "shipping_costs"
-
-    package_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("packages.id"),
-        primary_key=True
-    )
-    cost: Mapped[Decimal] = mapped_column(Numeric(4, 2), nullable=True)
+    
 

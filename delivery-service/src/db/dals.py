@@ -6,12 +6,12 @@ from venv import create
 
 from certifi import where
 from click import option
-from sqlalchemy import and_
+from sqlalchemy import Update, and_, bindparam
 from sqlalchemy import select
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import Package, UserSession, TypePackage, ShippingCost
+from db.models import Package, UserSession, TypePackage
 from api.schemas import ShowTypePackageSchema, ShowPackageSchema
 import logging
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ class PackageDAL(BaseDAL):
     async def create_package(
             self,
             title: str,
-            cost: Decimal,
+            package_cost: Decimal,
             weight: Decimal,
             type_package_id: UUID,
             type_package: TypePackage,
@@ -36,7 +36,7 @@ class PackageDAL(BaseDAL):
         
         new_package = Package(
             title=title,
-            cost=cost,
+            package_cost=package_cost,
             weight=weight,
             type_package_id=type_package_id,
             type_package=type_package,
@@ -73,6 +73,22 @@ class PackageDAL(BaseDAL):
             return package
         return None
     
+    async def get_package_delivery_cost_none(self) -> Optional[list[Package]]:
+        query = select(Package)\
+            .filter(Package.delivery_cost.is_(None))
+        result = await self.db_session.execute(query)
+        packages = result.scalars().unique()
+        if packages:
+            return list(packages)
+        return None
+    
+    async def update_bulk_delivery_cost_by_package(self, data: dict[Package, Decimal]):
+        # Словарь должен содержать ключи package_id и delivery_cost
+        for package, delivery_cost  in data.items():
+            package.delivery_cost = delivery_cost
+        await self.db_session.commit()
+
+
         
 class TypePackageDAL(BaseDAL):
     async def create_type_package(
@@ -137,23 +153,5 @@ class UserSessionDAL(BaseDAL):
             return user_session
         return None
 
-    
-class ShippingCostDAL(BaseDAL):
-    async def create_shipping_cost(self, package: Package) -> ShippingCost:
-        cost = ShippingCost(
-            package_id=package.id
-        )
-        self.db_session.add(cost)
-        await self.db_session.flush()
-        return cost
-    
-    async def add_cost(self, package: Package, cost: Decimal):
-        stmt = update(ShippingCost)\
-            .where(ShippingCost.package_id == package.id)\
-            .values(cost = cost)
-        await self.db_session.execute(stmt)
-        await self.db_session.flush()
-        return True
-    
-        
+
 

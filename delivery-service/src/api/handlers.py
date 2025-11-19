@@ -51,7 +51,7 @@ async def create_type_package(
     return ShowTypePackageSchema.model_validate(type_package)
 
 @package_router.get("/", response_model=list[ShowPackageSchema])
-async def get_package(db_session: AsyncSession = Depends(get_session_db),
+async def get_packages(db_session: AsyncSession = Depends(get_session_db),
                       user_session: UserSession = Depends(get_user)):
     packages = await get_packages_by_user_session(db_session=db_session, user_session=user_session)
     return [ShowPackageSchema.model_validate(package) for package in packages]
