@@ -1,3 +1,4 @@
+from token import OP
 from turtle import title
 from enum import Enum
 from fastapi import HTTPException
@@ -8,6 +9,7 @@ from typing import Annotated, Optional
 from pydantic import BeforeValidator
 from decimal import Decimal
 import uuid
+
 
 
 def validate_delivery_cost(value: Optional[Decimal]) -> Decimal | str:
@@ -45,10 +47,8 @@ class CreatePackageSchema(BaseModel):
     weight: Decimal = Field(max_digits=5, decimal_places=3, gt=0, description="Вес посылки")
     type_package: str = Field(..., description="Тип посылки")
 
-    
 
-
-
+        
 
 
 

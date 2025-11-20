@@ -18,6 +18,7 @@ async_session = sessionmaker(
     engine,
     expire_on_commit=False,
     class_=AsyncSession,
+
 )
 
 async def get_session_db() -> Generator:

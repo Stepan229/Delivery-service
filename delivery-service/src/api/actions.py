@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from fastapi import Depends, Request, Response
 
 from db.session import get_session_db
+from api.filters import PackageFilter
 
 logger = logging.getLogger(__name__)
 
@@ -122,9 +123,10 @@ async def get_user(request: Request,
     return user_session
 
 async def get_packages_by_user_session(db_session: AsyncSession,
-                                       user_session: UserSession) -> list[Package]:
+                                       user_session: UserSession,
+                                       package_filter: PackageFilter) -> list[Package]:
     user_session_dal = PackageDAL(db_session)
-    packages = await user_session_dal.get_packages_by_user_session(user_session)
+    packages = await user_session_dal.get_packages_by_user_session(user_session, package_filter)
     if not packages:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

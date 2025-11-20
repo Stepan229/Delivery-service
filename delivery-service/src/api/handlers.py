@@ -1,22 +1,19 @@
-from logging import getLogger
-from uuid import UUID
 import logging
 from fastapi import APIRouter, Path
-from fastapi import Depends, Request, Response
-from fastapi import HTTPException
-from sqlalchemy.exc import IntegrityError
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.filters import PackageFilter
 from api.schemas import CreatePackageSchema, CreateTypePackageSchema
 from api.schemas import ShowPackageSchema, ShowTypePackageSchema
-from db.dals import PackageDAL
-from db.dals import TypePackageDAL
+
 from db.session import get_session_db
 
 from db.models import UserSession
 
 from api.actions import _create_new_package, _create_new_type_package, get_user, get_packages_by_user_session, get_all_type_packages, _get_package_by_id
 
+from fastapi_filter import FilterDepends
 
 
 logger = logging.getLogger(__name__)
@@ -51,9 +48,12 @@ async def create_type_package(
     return ShowTypePackageSchema.model_validate(type_package)
 
 @package_router.get("/", response_model=list[ShowPackageSchema])
-async def get_packages(db_session: AsyncSession = Depends(get_session_db),
-                      user_session: UserSession = Depends(get_user)):
-    packages = await get_packages_by_user_session(db_session=db_session, user_session=user_session)
+async def get_packages(
+    package_filter: PackageFilter = FilterDepends(PackageFilter),
+    db_session: AsyncSession = Depends(get_session_db),
+    user_session: UserSession = Depends(get_user),
+    ):
+    packages = await get_packages_by_user_session(db_session, user_session, package_filter)
     return [ShowPackageSchema.model_validate(package) for package in packages]
 
 @package_router.get("/type/", response_model=list[ShowTypePackageSchema])

@@ -13,6 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import Package, UserSession, TypePackage
 from api.schemas import ShowTypePackageSchema, ShowPackageSchema
+from api.filters import PackageFilter
+
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -50,15 +53,31 @@ class PackageDAL(BaseDAL):
     
     async def get_packages_by_user_session(
             self, 
-            user: UserSession
+            user: UserSession,
+            package_filter: PackageFilter
         ) -> Optional[list[Package]]:
-        query = select(Package).where(Package.user_id == user.id)
-        result = await self.db_session.execute(query)
+        # query = select(Package).filter(Package.user_id == user.id)
+        if package_filter.type:
+            logger.info(f"TYPE FILTER PARAMS: name__neq={package_filter.type.name__neq}")
+        query_with_filter = package_filter.filter(select(Package))
+        final = query_with_filter.where(Package.user_id == user.id)
+        logger.info(f"ЗАПРОС {final}")
+        result = await self.db_session.execute(final)
         packages = result.scalars().unique()
         if packages:
             return list(packages)
         return None
     
+    # async def get_packages_by_user_session(
+    #         self, 
+    #         user: UserSession
+    #     ) -> Optional[list[Package]]:
+    #     query = select(Package).where(Package.user_id == user.id)
+    #     result = await self.db_session.execute(query)
+    #     packages = result.scalars().unique()
+    #     if packages:
+    #         return list(packages)
+    #     return None
     async def get_package_by_id(
             self,
             package_id: str,
