@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.filters import PackageFilter
 from api.schemas import CreatePackageSchema, CreateTypePackageSchema
 from api.schemas import ShowPackageSchema, ShowTypePackageSchema
+from api.schemas import PackageQueryParams
 
 from db.session import get_session_db
 
@@ -49,17 +50,19 @@ async def create_type_package(
 
 @package_router.get("/", response_model=list[ShowPackageSchema])
 async def get_packages(
-    package_filter: PackageFilter = FilterDepends(PackageFilter),
+    query_params: PackageQueryParams = Depends(),
     db_session: AsyncSession = Depends(get_session_db),
     user_session: UserSession = Depends(get_user),
     ):
-    packages = await get_packages_by_user_session(db_session, user_session, package_filter)
+    packages = await get_packages_by_user_session(db_session, user_session, query_params)
     return [ShowPackageSchema.model_validate(package) for package in packages]
+
 
 @package_router.get("/type/", response_model=list[ShowTypePackageSchema])
 async def get_type_package(db_session: AsyncSession = Depends(get_session_db)) -> list[ShowTypePackageSchema]:
     types = await get_all_type_packages(db_session)
     return [ShowTypePackageSchema.model_validate(type) for type in types]
+
 
 @package_router.get("/{package_id}")
 async def get_package_by_id(

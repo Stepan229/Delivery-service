@@ -1,3 +1,4 @@
+from tkinter import N, NO
 from token import OP
 from turtle import title
 from enum import Enum
@@ -46,6 +47,14 @@ class CreatePackageSchema(BaseModel):
     cost: Decimal = Field(max_digits=5, decimal_places=2, gt=0, description="Стоимость содержимого")
     weight: Decimal = Field(max_digits=5, decimal_places=3, gt=0, description="Вес посылки")
     type_package: str = Field(..., description="Тип посылки")
+
+class PackageQueryParams(BaseModel):
+    only_with_delivery_cost: Optional[bool] = None
+    name_type: Optional[str] = Field(None, min_length=1, max_length=100)
+
+    page: Optional[int] = Field(None, ge=1)
+    size: Optional[int] = Field(None, ge=1)
+
 
 
         

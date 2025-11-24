@@ -1,3 +1,4 @@
+from ast import stmt
 from tkinter import N, NO
 from typing import Union, Optional
 from uuid import UUID
@@ -12,8 +13,10 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import Package, UserSession, TypePackage
+
 from api.schemas import ShowTypePackageSchema, ShowPackageSchema
 from api.filters import PackageFilter
+from api.schemas import PackageQueryParams
 
 
 import logging
@@ -54,15 +57,26 @@ class PackageDAL(BaseDAL):
     async def get_packages_by_user_session(
             self, 
             user: UserSession,
-            package_filter: PackageFilter
+            page: Optional[int] = None,
+            size_page: Optional[int] = None,
+            type_name: Optional[str] = None,
+            only_with_delivery_cost: Optional[bool] = False,
+
+
         ) -> Optional[list[Package]]:
-        # query = select(Package).filter(Package.user_id == user.id)
-        if package_filter.type:
-            logger.info(f"TYPE FILTER PARAMS: name__neq={package_filter.type.name__neq}")
-        query_with_filter = package_filter.filter(select(Package))
-        final = query_with_filter.where(Package.user_id == user.id)
-        logger.info(f"ЗАПРОС {final}")
-        result = await self.db_session.execute(final)
+        stmt = select(Package).where(Package.user_id == user.id)
+
+        if only_with_delivery_cost:
+            stmt = stmt.where(Package.delivery_cost.isnot(None))
+
+        if type_name:
+            stmt = stmt.where(Package.type_package.has(TypePackage.name == type_name))
+
+        if size_page and page:
+            stmt = stmt.limit(size_page).offset(page * size_page)
+
+        result = await self.db_session.execute(stmt)
+
         packages = result.scalars().unique()
         if packages:
             return list(packages)

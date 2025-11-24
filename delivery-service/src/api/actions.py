@@ -5,6 +5,9 @@ import uuid
 from db.dals import PackageDAL, UserSessionDAL, TypePackageDAL
 from api.schemas import CreatePackageSchema, CreateTypePackageSchema
 from api.schemas import ShowPackageSchema, ShowTypePackageSchema
+from api.schemas import PackageQueryParams
+
+
 from h11 import Response
 from sqlalchemy import true
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -124,9 +127,15 @@ async def get_user(request: Request,
 
 async def get_packages_by_user_session(db_session: AsyncSession,
                                        user_session: UserSession,
-                                       package_filter: PackageFilter) -> list[Package]:
+                                       query_params: PackageQueryParams) -> list[Package]:
     user_session_dal = PackageDAL(db_session)
-    packages = await user_session_dal.get_packages_by_user_session(user_session, package_filter)
+    packages = await user_session_dal.get_packages_by_user_session(
+        user=user_session,
+        page=query_params.page,
+        size_page=query_params.size,
+        type_name=query_params.name_type,
+        only_with_delivery_cost=query_params.only_with_delivery_cost
+    )
     if not packages:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
