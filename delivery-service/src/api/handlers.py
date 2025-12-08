@@ -3,19 +3,22 @@ from fastapi import APIRouter, Path
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.filters import PackageFilter
-from api.schemas import CreatePackageSchema, CreateTypePackageSchema
-from api.schemas import ShowPackageSchema, ShowTypePackageSchema
-from api.schemas import PackageQueryParams
+
+from schemas.schemas import CreatePackageSchema, CreateTypePackageSchema
+from schemas.schemas import ShowPackageSchema, ShowTypePackageSchema
+
 
 from db.session import get_session_db
 
 from db.models import UserSession
 
-from api.actions import _create_new_package, _create_new_type_package, get_user, get_packages_by_user_session, get_all_type_packages, _get_package_by_id
+from services.actions import _create_new_package, create_new_type_package, get_user, get_packages_by_user_session, get_all_type_packages, _get_package_by_id
 
 from fastapi_filter import FilterDepends
 
+from domain.dto import PackageData, TypePackageData, UserSessionData, FilterPackageData, PaginationPackageData
+from schemas.filters import PaginationParams, PackageFilterParams
+from dataclasses import asdict
 
 logger = logging.getLogger(__name__)
 
@@ -26,49 +29,55 @@ async def create_package(body: CreatePackageSchema,
                             db_session: AsyncSession = Depends(get_session_db),
                             user_session: UserSession = Depends(get_user),
                             ) -> ShowPackageSchema:
-    try:  
-        package = await _create_new_package(body=body,
-                                            db_session=db_session, 
-                                            user_session=user_session)
-    except Exception:
-        raise
-    return ShowPackageSchema.model_validate(package)
-
-
-@package_router.post("/type/", response_model=ShowTypePackageSchema)
-async def create_type_package(
-        body: CreateTypePackageSchema,
-        db_session: AsyncSession = Depends(get_session_db)
-) -> ShowTypePackageSchema:
-    
     try:
-        type_package = await _create_new_type_package(body.name, db_session)
+        package_data = PackageData(
+            user_id=user_session.id,
+            title=body.title,
+            package_cost=body.cost,
+            weight=body.weight
+        )
+        package = await _create_new_package(package_data, body.type_package)
     except Exception:
         raise
+    logger.error(f"ОШИБКА {package}")
+    return dataclass_to_pydantic(package, ShowPackageSchema)
 
-    return ShowTypePackageSchema.model_validate(type_package)
 
 @package_router.get("/", response_model=list[ShowPackageSchema])
 async def get_packages(
-    query_params: PackageQueryParams = Depends(),
-    db_session: AsyncSession = Depends(get_session_db),
-    user_session: UserSession = Depends(get_user),
+    pagination: PaginationParams = Depends(),
+    filters: PackageFilterParams = Depends(),
+    user_session: UserSessionData = Depends(get_user),
     ):
-    packages = await get_packages_by_user_session(db_session, user_session, query_params)
+    packages = await get_packages_by_user_session(user_session,
+                                                   FilterPackageData(**filters.model_dump()),
+                                                   PaginationPackageData(**pagination.model_dump()))
     return [ShowPackageSchema.model_validate(package) for package in packages]
 
 
+@package_router.post("/type/", response_model=ShowTypePackageSchema)
+async def create_type_package(body: CreateTypePackageSchema) -> ShowTypePackageSchema:
+    try:
+        type_package = TypePackageData(name=body.name)
+        new_type_package = await create_new_type_package(type_package)
+    except Exception:
+        raise
+    return dataclass_to_pydantic(new_type_package, ShowTypePackageSchema)
+
 @package_router.get("/type/", response_model=list[ShowTypePackageSchema])
-async def get_type_package(db_session: AsyncSession = Depends(get_session_db)) -> list[ShowTypePackageSchema]:
-    types = await get_all_type_packages(db_session)
-    return [ShowTypePackageSchema.model_validate(type) for type in types]
+async def get_type_package() -> list[ShowTypePackageSchema]:
+    types = await get_all_type_packages()
+    return [dataclass_to_pydantic(type, ShowTypePackageSchema) for type in types]
 
 
 @package_router.get("/{package_id}")
 async def get_package_by_id(
     package_id: str = Path(..., description="ID посылки"),
-    db_session: AsyncSession = Depends(get_session_db),
     user_session: UserSession = Depends(get_user),
 ) -> ShowPackageSchema:
-    package = await _get_package_by_id(db_session, package_id, user_session)
+    package = await _get_package_by_id(package_id, user_session)
     return ShowPackageSchema.model_validate(package)
+
+
+def dataclass_to_pydantic(dataclass_obj, pydantic_model_class):
+    return pydantic_model_class(**asdict(dataclass_obj))

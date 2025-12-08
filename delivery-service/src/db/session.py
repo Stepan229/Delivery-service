@@ -3,7 +3,8 @@ from typing import Generator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import sessionmaker
-
+from typing import AsyncGenerator
+from sqlalchemy.ext.asyncio import AsyncSession
 
 DATABASE_URL = "postgresql+asyncpg://postgres:30062001@localhost:5434/db_delivery_service"
 
@@ -31,10 +32,13 @@ async def get_session_db() -> Generator:
 from contextlib import asynccontextmanager
 
 @asynccontextmanager
-async def get_db_session():
-    session_gen = get_session_db()
-    try:
-        db_session = await session_gen.__anext__()
-        yield db_session
-    finally:
-        await session_gen.aclose()
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+    async with async_session() as session:
+        session: AsyncSession = session
+        try:
+            yield session
+        except Exception:
+            await session.rollback()  
+            raise
+        finally:
+            await session.close() 
