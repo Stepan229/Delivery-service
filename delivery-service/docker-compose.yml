@@ -1,33 +1,39 @@
 services:
-    # booking-service-app:
-    #     build:
-    #         context: .
-    #         dockerfile: Dockerfile
-    #         args:
-    #             - HTTP_PROXY=${HTTP_PROXY}
-    #             - HTTPS_PROXY=${HTTPS_PROXY}
+    delivery-service-app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            args:
+                - HTTP_PROXY=${HTTP_PROXY}
+                - HTTPS_PROXY=${HTTPS_PROXY}
         
-    #     ports:
-    #         - "8000:8000"
+        ports:
+            - "${API_PORT}:${API_PORT}"
+        depends_on:
+            - database
+            - redis
+        command:
+            sh -c "/app/.venv/bin/python main.py run-api"
 
-    #     environment:
-    #         DB_HOST: database
-    #         DB_NAME: ${DB_NAME}
-    #         DB_USER: ${DB_USER}
-    #         DB_PASSWORD: ${DB_PASSWORD}
-    #         DB_PORT: 5432
-            
-    #     command:
-    #        sh -c "/app/.venv/bin/python /app/manage.py migrate &&
-    #          /app/.venv/bin/python /app/manage.py runserver 0.0.0.0:8000"
-    #     depends_on:
-    #         - database
-    #     # network_mode: "8.8.8.8"
+    scheduler:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            args:
+                - HTTP_PROXY=${HTTP_PROXY}
+                - HTTPS_PROXY=${HTTPS_PROXY}
+        
+        depends_on:
+            - database
+            - redis
+        command:
+            sh -c "/app/.venv/bin/python main.py run-scheduler"
+
 
     database:
         image: postgres:17.4-alpine
         ports:
-            - "5434:5432"
+            - "5434:${DB_PORT}"
         environment:
             POSTGRES_USER: ${DB_USER}
             POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -35,13 +41,13 @@ services:
 
         volumes:
             - postgres_data:/var/lib/postgresql/data
-            # - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+
     
     redis:
         image: redis:7.2.5-alpine
         hostname: redis
         ports:
-            - "6379:6379"
+            - "6379:${REDIS_PORT}"
 
 
 volumes:

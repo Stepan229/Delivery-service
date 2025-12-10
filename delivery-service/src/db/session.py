@@ -1,12 +1,11 @@
 from typing import Generator
-
+from settings import DATABASE_URL
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import sessionmaker
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-DATABASE_URL = "postgresql+asyncpg://postgres:30062001@localhost:5434/db_delivery_service"
 
 engine = create_async_engine(
     DATABASE_URL,

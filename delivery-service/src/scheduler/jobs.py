@@ -1,13 +1,11 @@
 from decimal import Decimal
 from venv import logger
-from db.session import get_db_session
+
 from db.dals import PackageDAL
-from db.models import Package
 from domain.dto import PackageData
 
 from typing import  Optional
-from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from scheduler.work_with_api import get_currency
 
 from decimal import Decimal
@@ -47,7 +45,7 @@ async def add_cost_delivery():
         )
         package.delivery_cost = delivery_cost
     await update_delivery_cost_packages(packages)
-        
+    logger.info(f"Стоимость доставки расчитана для {len(packages)} посылок")
     return True
 
     

@@ -8,44 +8,67 @@ from scheduler.jobs import add_cost_delivery
 
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
-from fastapi_cache.decorator import cache
 
 from redis import asyncio as aioredis
 
-scheduler = AsyncIOScheduler()
+import asyncio
+from asyncio import AbstractEventLoop
 
 logger = logging.getLogger(__name__)
-logger.error("Планировщик обновления курсов валют запущен")
+from settings import REDIS_HOST, REDIS_PORT
 
 @asynccontextmanager
 async def lifespan(app: FastAPI)-> AsyncIterator[None]:
     try:
-        start_scheduler(scheduler)
         start_redis_cache()
     except:
         raise
 
     yield
-    stop_scheduler(scheduler)
     
 
-def start_scheduler(scheduler: AsyncIOScheduler):
+def start_scheduler():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    scheduler_instance = AsyncIOScheduler(event_loop=loop)
+
+    start_redis_cache()
+
     try:
-        scheduler.add_job(
+        
+        scheduler_instance.add_job(
             add_cost_delivery,
-            trigger=IntervalTrigger(minutes=5),
+            trigger=IntervalTrigger(seconds=2),
             id='currency_update_job',
             replace_existing=True
         )
-        scheduler.start()
+        loop.run_until_complete(async_start_scheduler(scheduler_instance))
         logger.error("Планировщик обновления курсов валют запущен")
-    except Exception as e:
-        logger.error(f"Ошибка инициализации планировщика: {e}")
 
-def stop_scheduler(scheduler: AsyncIOScheduler):
-    scheduler.shutdown()
+
+        try:
+            loop.run_forever()
+        except (KeyboardInterrupt, SystemExit):
+            logger.info("Получен сигнал остановки")
+        finally:
+            stop_scheduler(scheduler_instance, loop)
+
+    except Exception as e:
+        logger.error(f"Ошибка инициализации планировщика: {e}", exc_info=True)
+    
+def stop_scheduler(scheduler: AsyncIOScheduler, loop: AbstractEventLoop):
+    if scheduler.running:
+        loop.run_until_complete(async_stop_scheduler(scheduler))
+
+
+async def async_start_scheduler(scheduler: AsyncIOScheduler):
+    scheduler.start()
+
+
+async def async_stop_scheduler(scheduler: AsyncIOScheduler):
+    scheduler.shutdown(wait=False)
     logger.info("Планировщик обновления курсов валют остановлен")
 
 def start_redis_cache():
-    redis = aioredis.from_url("redis://localhost:6379")
+    redis = aioredis.from_url(f"redis://{REDIS_HOST}:{REDIS_PORT}")
     FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")

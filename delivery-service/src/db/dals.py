@@ -1,14 +1,7 @@
 from abc import abstractmethod
-from ast import stmt
-from tkinter import N, NO
-from typing import Union, Optional
+from typing import Optional
 from uuid import UUID, uuid4
-from decimal import Decimal
-from venv import create
 
-from certifi import where
-from click import option
-from sqlalchemy import Update, and_, bindparam
 from sqlalchemy import select
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,8 +9,6 @@ from sqlalchemy import case
 
 from db.models import Package, UserSession, TypePackage
 from db.session import get_db_session
-
-from schemas.schemas import ShowTypePackageSchema, ShowPackageSchema
 
 
 from domain.dto import PackageData, TypePackageData, UserSessionData

@@ -1,11 +1,8 @@
-from tkinter import N, NO
-from token import OP
-from turtle import title
+
 from enum import Enum
-from fastapi import HTTPException
+
 from pydantic import BaseModel, ConfigDict, Field
-from pydantic import constr
-from pydantic import EmailStr
+
 from typing import Annotated, Optional
 from pydantic import BeforeValidator
 from decimal import Decimal
@@ -48,6 +45,13 @@ class CreatePackageSchema(BaseModel):
     type_package: str = Field(..., description="Тип посылки")
 
 
+class HealthCheckStatus(Enum):
+    access = "Access"
+    unavailable = "Unavailable"
+
+class ShowHealthCheck(BaseModel):
+    status: HealthCheckStatus = Field(... , description="Статус работы сервиса")
+    name_service: str = Field(... , min_length=1 ,max_length=255, description="Имя сервиса")
 
 
 

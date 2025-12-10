@@ -14,8 +14,6 @@ from db.models import UserSession
 
 from services.actions import _create_new_package, create_new_type_package, get_user, get_packages_by_user_session, get_all_type_packages, _get_package_by_id
 
-from fastapi_filter import FilterDepends
-
 from domain.dto import PackageData, TypePackageData, UserSessionData, FilterPackageData, PaginationPackageData
 from schemas.filters import PaginationParams, PackageFilterParams
 from dataclasses import asdict
