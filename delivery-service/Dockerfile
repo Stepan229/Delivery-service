@@ -29,7 +29,8 @@ WORKDIR /app
 RUN apk add --no-cache \
     libpq \
     libffi \
-    openssl
+    openssl \
+    curl 
 
 COPY --from=builder /app /app
 

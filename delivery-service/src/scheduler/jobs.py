@@ -1,12 +1,13 @@
 from decimal import Decimal
 from venv import logger
 
-from db.dals import PackageDAL
+from repositories.dals import PackageDAL
 from domain.dto import PackageData
 
 from typing import  Optional
 
-from scheduler.work_with_api import get_currency
+from repositories.work_with_api import get_currency
+from services.package_actions import get_packages_without_cost, update_delivery_cost_packages
 
 from decimal import Decimal
 
@@ -16,17 +17,6 @@ def calculation_cost_delivery(weight: Decimal,
                               valute_usd: Decimal):
     cost_delivery = (weight * Decimal('0.5') + package_cost * Decimal("0.01")) * valute_usd
     return cost_delivery
-
-
-
-async def get_packages_without_cost() -> Optional[list[PackageData]]:
-    package_dal = PackageDAL()
-    packages = await package_dal.get_package_delivery_cost_none()
-    return packages
-    
-async def update_delivery_cost_packages(packages: list[PackageData]):
-    package_dal = PackageDAL()
-    await package_dal.update_bulk_delivery_cost(packages)
 
 
 async def add_cost_delivery():

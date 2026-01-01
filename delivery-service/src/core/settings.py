@@ -8,7 +8,7 @@ from redis import Redis
 
 logger = logging.getLogger(__name__)
 
-dotenv_path = os.path.join(Path(__file__).resolve().parents[0], '.env')
+dotenv_path = os.path.join(Path(__file__).resolve().parents[1], '.env')
 
 if os.path.exists(dotenv_path):
     load_dotenv(dotenv_path)
@@ -31,3 +31,4 @@ API_PORT = os.getenv('API_PORT', '8010')
 
 REDIS_HOST = os.getenv('REDIS_HOST', '127.0.0.1')
 REDIS_PORT = os.getenv('REDIS_PORT', '8010')
+REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}"

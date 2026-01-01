@@ -1,6 +1,6 @@
 from typing import Annotated, Optional
 
-from db.models import Package, TypePackage
+from models import Package, TypePackage
 
 from decimal import Decimal
 

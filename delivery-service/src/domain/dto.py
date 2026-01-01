@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from os import name
 # from importlib.resources import Package
 
-from db.models import Package, TypePackage, UserSession
+from models import Package, TypePackage, UserSession
 from typing import Optional
 from uuid import UUID
 from decimal import Decimal

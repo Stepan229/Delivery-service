@@ -1,11 +1,20 @@
 from typing import Generator
-from settings import DATABASE_URL
+from core.settings import DATABASE_URL
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import sessionmaker
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+
+from redis import asyncio as aioredis
+
+import asyncio
+from asyncio import AbstractEventLoop
+
+from core.settings import REDIS_URL
 
 engine = create_async_engine(
     DATABASE_URL,
@@ -41,3 +50,7 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
             raise
         finally:
             await session.close() 
+
+def start_redis_cache():
+    redis = aioredis.from_url(REDIS_URL)
+    FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")

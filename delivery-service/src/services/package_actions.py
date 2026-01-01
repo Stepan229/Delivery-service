@@ -2,25 +2,14 @@ import logging
 from typing import Optional
 from uuid import UUID, uuid4
 
+from repositories.dals import PackageDAL, TypePackageDAL
 
-from db.dals import PackageDAL, UserSessionDAL, TypePackageDAL
-from schemas.schemas import CreatePackageSchema, CreateTypePackageSchema
-from schemas.schemas import ShowPackageSchema, ShowTypePackageSchema
+from models import UserSession
 
-
-
-from h11 import Response
-from sqlalchemy import true
-from sqlalchemy.ext.asyncio import AsyncSession
-from db.models import TypePackage, Package, UserSession
-from asyncpg import exceptions
 from fastapi import HTTPException, status
 
 from sqlalchemy.exc import IntegrityError
 
-from fastapi import Depends, Request, Response
-
-from db.session import get_session_db
 
 
 from domain.dto import PackageData, TypePackageData, UserSessionData
@@ -28,9 +17,9 @@ from domain.dto import FilterPackageData, PaginationPackageData
 
 logger = logging.getLogger(__name__)
 
-async def _create_new_package(package_data: PackageData, name_type_package: str) -> PackageData:
+async def create_new_package(package_data: PackageData, name_type_package: str) -> PackageData:
     try:
-        type_package = await _get_type_package_by_name(name_type_package)
+        type_package = await get_type_package_by_name(name_type_package)
     except HTTPException:
         raise
     
@@ -48,7 +37,7 @@ async def _create_new_package(package_data: PackageData, name_type_package: str)
         )
     return package
 
-async def _get_type_package_by_name(name_type_package: str) -> TypePackageData:
+async def get_type_package_by_name(name_type_package: str) -> TypePackageData:
    
     type_package_dal = TypePackageDAL()
     type_package = await type_package_dal.get_type_package_by_name(name_type_package)
@@ -60,44 +49,6 @@ async def _get_type_package_by_name(name_type_package: str) -> TypePackageData:
         )
     return type_package
 
-
-
-
-async def create_new_session_user(response: Response) -> UserSessionData:
-
-
-    user_session_dal = UserSessionDAL()
-    user = await user_session_dal.create_session()
-
-    
-    return user
-
-async def get_or_create_user(session_id: UUID) -> Optional[UUID]:
-    "Возвращает идентификатор сессии"
-
-    if not session_id:
-        user_session = await create_new_session_user(response)
-        return user_session.id_session
-
-async def get_user(request: Request, response: Response) -> UserSessionData:
-    session_id = request.headers.get("X-Session-ID")
-
-    if not session_id:
-        session_id = request.cookies.get("session_id")
-
-    
-    user_session_dal = UserSessionDAL()
-    if session_id:
-        user, created = await user_session_dal.get_or_create_user(UUID(session_id))
-    else:
-        user = await user_session_dal.create_session()
-        created = True
-    if created:
-        response.set_cookie(key="session_id", 
-                    value=str(user.id_session),
-                    httponly=True,
-                    samesite="lax")
-    return user
 
 async def get_packages_by_user_session(user_session: UserSessionData,
                                        filters: FilterPackageData,
@@ -117,9 +68,9 @@ async def get_packages_by_user_session(user_session: UserSessionData,
     
 
 
-async def _get_package_by_id(id_package: str, user_session: UserSession) -> PackageData:
+async def get_package_by_id(id_package: str, user_session: UserSession) -> PackageData:
     package_dal = PackageDAL()
-    package = await package_dal.get_package_by_id(id_package, user_session)
+    package = await package_dal.get_package_by_id(UUID(id_package), user_session)
     if not package:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -151,7 +102,15 @@ async def create_new_type_package(type_package: TypePackageData) -> TypePackageD
     return new_type_package
 
         
-        
+async def get_packages_without_cost() -> Optional[list[PackageData]]:
+    package_dal = PackageDAL()
+    packages = await package_dal.get_package_delivery_cost_none()
+    return packages
+    
+async def update_delivery_cost_packages(packages: list[PackageData]):
+    package_dal = PackageDAL()
+    await package_dal.update_bulk_delivery_cost(packages)
+
     
 
 

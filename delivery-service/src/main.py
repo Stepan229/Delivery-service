@@ -7,10 +7,10 @@ from starlette_exporter import PrometheusMiddleware
 from scheduler.scheduler import start_scheduler
 from scheduler.jobs import add_cost_delivery
 from endpoints.package import package_router
-from endpoints.heallth_check import health_check_router
+from endpoints.health_check import health_check_router
 import asyncio
-from settings import API_HOST, API_PORT
-from logging_config import setup_logging
+from core.settings import API_HOST, API_PORT
+from services.logging_config import setup_logging
 
 import logging
 setup_logging()

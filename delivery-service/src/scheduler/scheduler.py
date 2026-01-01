@@ -13,9 +13,9 @@ from redis import asyncio as aioredis
 
 import asyncio
 from asyncio import AbstractEventLoop
+from core.session import start_redis_cache
 
 logger = logging.getLogger(__name__)
-from settings import REDIS_HOST, REDIS_PORT
 
 @asynccontextmanager
 async def lifespan(app: FastAPI)-> AsyncIterator[None]:
@@ -38,7 +38,7 @@ def start_scheduler():
         
         scheduler_instance.add_job(
             add_cost_delivery,
-            trigger=IntervalTrigger(seconds=2),
+            trigger=IntervalTrigger(minutes=5),
             id='currency_update_job',
             replace_existing=True
         )
@@ -69,6 +69,4 @@ async def async_stop_scheduler(scheduler: AsyncIOScheduler):
     scheduler.shutdown(wait=False)
     logger.info("Планировщик обновления курсов валют остановлен")
 
-def start_redis_cache():
-    redis = aioredis.from_url(f"redis://{REDIS_HOST}:{REDIS_PORT}")
-    FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
+

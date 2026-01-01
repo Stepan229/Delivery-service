@@ -8,16 +8,16 @@ from schemas.schemas import CreatePackageSchema, CreateTypePackageSchema
 from schemas.schemas import ShowPackageSchema, ShowTypePackageSchema
 
 
-from db.session import get_session_db
+from core.session import get_session_db
 
-from db.models import UserSession
+from models import UserSession
 
-from services.actions import _create_new_package, create_new_type_package, get_user, get_packages_by_user_session, get_all_type_packages, _get_package_by_id
-
+from services.package_actions import create_new_package, create_new_type_package, get_packages_by_user_session, get_all_type_packages, get_package_by_id
+from services.user_actions import get_user
 from domain.dto import PackageData, TypePackageData, UserSessionData, FilterPackageData, PaginationPackageData
 from schemas.filters import PaginationParams, PackageFilterParams
-from dataclasses import asdict
 
+from services.utils import dataclass_to_pydantic
 logger = logging.getLogger(__name__)
 
 package_router = APIRouter()
@@ -34,7 +34,7 @@ async def create_package(body: CreatePackageSchema,
             package_cost=body.cost,
             weight=body.weight
         )
-        package = await _create_new_package(package_data, body.type_package)
+        package = await create_new_package(package_data, body.type_package)
     except Exception:
         raise
     logger.error(f"ОШИБКА {package}")
@@ -69,13 +69,11 @@ async def get_type_package() -> list[ShowTypePackageSchema]:
 
 
 @package_router.get("/{package_id}")
-async def get_package_by_id(
+async def get_package(
     package_id: str = Path(..., description="ID посылки"),
     user_session: UserSession = Depends(get_user),
 ) -> ShowPackageSchema:
-    package = await _get_package_by_id(package_id, user_session)
+    package = await get_package_by_id(package_id, user_session)
     return ShowPackageSchema.model_validate(package)
 
 
-def dataclass_to_pydantic(dataclass_obj, pydantic_model_class):
-    return pydantic_model_class(**asdict(dataclass_obj))

@@ -7,8 +7,8 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import case
 
-from db.models import Package, UserSession, TypePackage
-from db.session import get_db_session
+from models import Package, UserSession, TypePackage
+from core.session import get_db_session
 
 
 from domain.dto import PackageData, TypePackageData, UserSessionData
@@ -29,24 +29,67 @@ class AbstractPackage:
         pass
     
     @abstractmethod
-    async def get_packages_by_user_session(self) -> PackageData:
+    async def get_packages_by_user_session(
+            self, 
+            user: UserSessionData,
+            filters: FilterPackageData,
+            pagination: PaginationPackageData
+        ) -> Optional[list[PackageData]]:
         pass
 
     @abstractmethod
-    async def get_package_by_id(self) -> PackageData:
+    async def get_package_by_id(
+            self,
+            package_id: str,
+            user_session: UserSession
+        ) -> Optional[PackageData]:
+        pass
+
+    @abstractmethod
+    async def get_package_delivery_cost_none(self) -> Optional[list[PackageData]]:
+        pass
+
+    @abstractmethod
+    async def update_bulk_delivery_cost(self, data: list[PackageData]):
+        pass
+
+class TypePackageAbstract():
+    @abstractmethod
+    async def create_type_package(
+            self,
+            type_package_data:TypePackageData
+        ) -> TypePackageData:
+        pass
+    @abstractmethod
+    async def get_all_type_package(self) -> Optional[list[TypePackageData]]:
         pass
 
 
     @abstractmethod
-    async def get_package_delivery_cost_none(self) -> PackageData:
+    async def get_type_package_by_name(
+            self,
+            name: str
+    ) -> Optional[TypePackageData]:
+        pass
+
+class UserSessionAbstract():
+    @abstractmethod
+    async def create_session(self) -> UserSessionData:
         pass
 
     @abstractmethod
-    async def update_bulk_delivery_cost_by_package(self):
+    async def get_session_by_session(self, session: str) -> Optional[UserSessionData]:
+       pass 
+
+    @abstractmethod
+    async def get_session_by_id(self, session: str) -> Optional[UserSessionData]:
+        pass
+    
+    @abstractmethod
+    async def get_or_create_user(self, session_id: UUID) -> tuple[UserSessionData, bool]:
         pass
 
-
-class PackageDAL():
+class PackageDAL(AbstractPackage):
     data_class = PackageData
     db_model = Package
     async def create_package(self, package_data: PackageData
@@ -95,7 +138,7 @@ class PackageDAL():
 
     async def get_package_by_id(
             self,
-            package_id: str,
+            package_id: UUID,
             user_session: UserSession
     ) -> Optional[PackageData]:
         async with get_db_session() as db_session:
@@ -138,7 +181,7 @@ class PackageDAL():
                 await db_session.execute(stmt)
 
         
-class TypePackageDAL():
+class TypePackageDAL(TypePackageAbstract):
     async def create_type_package(
             self,
             type_package_data:TypePackageData
@@ -172,10 +215,8 @@ class TypePackageDAL():
         return None
     
     
-class UserSessionDAL():
-    async def create_session(
-            self,
-    ) -> UserSessionData:
+class UserSessionDAL(UserSessionAbstract):
+    async def create_session(self) -> UserSessionData:
         async with get_db_session() as db_session:
             async with db_session.begin():
                 id_session = uuid4()
@@ -184,18 +225,16 @@ class UserSessionDAL():
                 await db_session.commit()
         return UserSessionData.from_orm(new_user)
     
-    async def get_session_by_session(self, session: str) -> Optional[UserSessionData]:
+    async def get_session_by_session(self, session: UUID) -> Optional[UserSessionData]:
         async with get_db_session() as db_session:
-            query = select(UserSession).where(UserSession.id_session == session)
-            result = await db_session.execute(query)
-            user_session = result.scalars().first()
+            user_session = await self._get_user_by_session(db_session, session)
         if user_session:
             return UserSessionData.from_orm(user_session)
         return None
     
-    async def get_session_by_id(self, session: str) -> Optional[UserSessionData]:
+    async def get_session_by_id(self, user_id: str) -> Optional[UserSessionData]:
         async with get_db_session() as db_session:
-            query = select(UserSession).where(UserSession.id == session)
+            query = select(UserSession).where(UserSession.id == user_id)
             result = await db_session.execute(query)
             user_session = result.scalars().first()
         if user_session:
@@ -206,23 +245,23 @@ class UserSessionDAL():
         "Если пользователя не существует, возвращает True"
         async with get_db_session() as db_session:
             async with db_session.begin():
-                user = await self.__get_user_by_session(db_session, session_id)
+                user = await self._get_user_by_session(db_session, session_id)
 
                 
                 if user:
                     return (UserSessionData.from_orm(user), False)
                 
-                user = await self.__create_user(db_session)
+                user = await self._create_user(db_session)
                 return (UserSessionData.from_orm(user), True)
     
-    async def __create_user(self, db_session) -> UserSession:
+    async def _create_user(self, db_session) -> UserSession:
         id_session = uuid4()
         new_user = UserSession(id_session=id_session)
         db_session.add(new_user)
         await db_session.flush()
         return new_user
     
-    async def __get_user_by_session(self, db_session, user_session) -> UserSession:
+    async def _get_user_by_session(self, db_session: AsyncSession, user_session: UUID) -> Optional[UserSession]:
         query = select(UserSession).where(UserSession.id_session == user_session)
         result = await db_session.execute(query)
         return result.scalars().first()
